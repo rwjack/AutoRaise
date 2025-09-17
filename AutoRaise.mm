@@ -28,7 +28,7 @@
 #include <Carbon/Carbon.h>
 #include <libproc.h>
 
-#define AUTORAISE_VERSION "5.4"
+#define AUTORAISE_VERSION "5.5"
 #define STACK_THRESHOLD 20
 
 #ifdef EXPERIMENTAL_FOCUS_FIRST
@@ -58,6 +58,7 @@ static CGPoint oldCorrectedPoint = {0, 0};
 
 #define SCALE_DELAY_MS 400 // The moment the mouse scaling should start, feel free to modify.
 #define SCALE_DURATION_MS (SCALE_DELAY_MS+600) // Mouse scale duration, feel free to modify.
+#define TASK_SWITCHER_MODIFIER_KEY kCGEventFlagMaskCommand // kCGEventFlagMaskControl, ...
 
 #ifdef FOCUS_FIRST
 #define kCPSUserGenerated 0x200
@@ -106,13 +107,13 @@ static NSArray * const mainWindowAppsWithoutTitle =@[
     @"Stickies Pro",
     @"Reeder"
 ];
-static NSArray * chromiumBrowsers = @[
+static NSArray * pwas = @[
     @"Chrome",
     @"Chromium",
     @"Vivaldi",
     @"Brave",
     @"Opera",
-    @"Edge"
+    @"edgemac"
 ];
 static NSString * const DockBundleId = @"com.apple.dock";
 static NSString * const FinderBundleId = @"com.apple.finder";
@@ -650,11 +651,10 @@ inline bool is_main_window(AXUIElementRef _app, AXUIElementRef _window, bool chr
     return main_window;
 }
 
-inline bool is_chrome_app(NSString * bundleIdentifier) {
+inline bool is_pwa(NSString * bundleIdentifier) {
     NSArray * components = [bundleIdentifier componentsSeparatedByString: @"."];
-    return components.count > 4 &&
-           [chromiumBrowsers containsObject: components[2]] &&
-           [components[3] isEqual: @"app"];
+    bool pwa = components.count > 4 && [pwas containsObject: components[2]] && [components[3] isEqual: @"app"];
+    if (verbose && pwa) { NSLog(@"PWA: %@", components[2]); }
 }
 
 //-----------------------------------------------notifications----------------------------------------------
@@ -1079,7 +1079,7 @@ void onTick() {
                 bool needs_raise = !invertIgnoreApps;
                 AXUIElementRef _mouseWindowApp = AXUIElementCreateApplication(mouseWindow_pid);
                 if (needs_raise && titleEquals(_mouseWindow, @[NoTitle, Untitled])) {
-                    needs_raise = is_main_window(_mouseWindowApp, _mouseWindow, is_chrome_app(
+                    needs_raise = is_main_window(_mouseWindowApp, _mouseWindow, is_pwa(
                         [NSRunningApplication runningApplicationWithProcessIdentifier:
                         mouseWindow_pid].bundleIdentifier));
                     if (verbose && !needs_raise) { NSLog(@"Excluding window"); }
@@ -1128,8 +1128,7 @@ void onTick() {
 #ifdef FOCUS_FIRST
                         } else {
                             needs_raise = needs_raise && is_main_window(_frontmostApp, _focusedWindow,
-                                is_chrome_app(frontmostApp.bundleIdentifier)) && (
-                                mouseWindow_pid != frontmost_pid ||
+                                is_pwa(frontmostApp.bundleIdentifier)) && (mouseWindow_pid != frontmost_pid ||
                                 !contained_within(_focusedWindow, _mouseWindow));
                         }
                         if (needs_raise && delayCount && raiseDelayCount != 1) {
@@ -1217,19 +1216,15 @@ void onTick() {
 CGEventRef eventTapHandler(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *userInfo) {
     static bool commandTabPressed = false;
     if (type == kCGEventFlagsChanged && commandTabPressed) {
-        if (!activated_by_task_switcher) {
-            activated_by_task_switcher = true;
-            ignoreTimes = 3;
-        }
+        activated_by_task_switcher = true;
+        ignoreTimes = 3;
     }
 
     static bool commandGravePressed = false;
     if (type == kCGEventFlagsChanged && commandGravePressed) {
-        if (!activated_by_task_switcher) {
-            activated_by_task_switcher = true;
-            ignoreTimes = 3;
-            [workspaceWatcher onAppActivated];
-        }
+        activated_by_task_switcher = true;
+        ignoreTimes = 3;
+        [workspaceWatcher onAppActivated];
     }
 
     commandTabPressed = false;
@@ -1238,10 +1233,10 @@ CGEventRef eventTapHandler(CGEventTapProxy proxy, CGEventType type, CGEventRef e
         CGKeyCode keycode = (CGKeyCode) CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
         if (keycode == kVK_Tab) {
             CGEventFlags flags = CGEventGetFlags(event);
-            commandTabPressed = (flags & kCGEventFlagMaskCommand) == kCGEventFlagMaskCommand;
+            commandTabPressed = (flags & TASK_SWITCHER_MODIFIER_KEY) == TASK_SWITCHER_MODIFIER_KEY;
         } else if (warpMouse && keycode == kVK_ANSI_Grave) {
             CGEventFlags flags = CGEventGetFlags(event);
-            commandGravePressed = (flags & kCGEventFlagMaskCommand) == kCGEventFlagMaskCommand;
+            commandGravePressed = (flags & TASK_SWITCHER_MODIFIER_KEY) == TASK_SWITCHER_MODIFIER_KEY;
         }
     } else if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
         if (verbose) { NSLog(@"Got event tap disabled event, re-enabling..."); }
