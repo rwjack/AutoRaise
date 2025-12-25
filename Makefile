@@ -28,50 +28,12 @@ AutoRaise.app: AutoRaise Info.plist AutoRaise.icns
 # Build GUI app with launcher (requires Xcode)
 gui-app: AutoRaise
 	@echo "Building AutoRaise.app with GUI launcher (will auto-resolve packages)..."
-	@mkdir -p build/logs
-	set -o pipefail; \
-	xcodebuild -project AutoRaise.xcodeproj \
+	@xcodebuild -project AutoRaise.xcodeproj \
 		-scheme AutoRaise \
 		-configuration Release \
 		-derivedDataPath build \
 		-clonedSourcePackagesDirPath build/SourcePackages \
-		build 2>&1 | tee build/logs/build.log; \
-	BUILD_STATUS=$$?; \
-	echo ""; \
-	echo "=== BUILD COMPLETED WITH EXIT CODE: $$BUILD_STATUS ==="; \
-	if [ $$BUILD_STATUS -ne 0 ]; then \
-		echo ""; \
-		echo "=== BUILD FAILED - EXTRACTING ERRORS ==="; \
-		echo "Checking if build log exists..."; \
-		ls -la build/logs/build.log 2>&1 || echo "Build log not found"; \
-		if [ -f "build/logs/build.log" ]; then \
-			echo "✓ Build log file found"; \
-			LOG_LINES=$$(wc -l < build/logs/build.log 2>/dev/null || echo "0"); \
-			echo "Build log has $$LOG_LINES lines"; \
-			echo ""; \
-			echo "=== SEARCHING FOR 'error:' ==="; \
-			grep -i "error:" build/logs/build.log | head -50; \
-			echo ""; \
-			echo "=== SEARCHING FOR 'failed' ==="; \
-			grep -i "failed" build/logs/build.log | head -30; \
-			echo ""; \
-			echo "=== SEARCHING FOR 'failure' ==="; \
-			grep -i "failure" build/logs/build.log | head -30; \
-			echo ""; \
-			echo "=== BUILD SUMMARY SECTION ==="; \
-			grep -A 10 -B 10 "failures\|BUILD\|Building project" build/logs/build.log | tail -50; \
-			echo ""; \
-			echo "=== LAST 200 LINES OF BUILD LOG ==="; \
-			tail -200 build/logs/build.log; \
-		else \
-			echo "ERROR: Build log file not found at build/logs/build.log"; \
-			echo "Searching for log files..."; \
-			find build -name "*.log" -type f 2>/dev/null | head -10 || echo "  (no log files found)"; \
-		fi; \
-		echo ""; \
-		echo "Full build log should be at: build/logs/build.log"; \
-		exit $$BUILD_STATUS; \
-	fi
+		build
 	@echo "Verifying package was resolved..."
 	@if [ -d "build/SourcePackages/checkouts/MASShortcut" ]; then \
 		echo "✓ MASShortcut package found"; \

@@ -171,7 +171,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ -d /System/Library/PrivateFrameworks/SkyLight.framework ]; then\n    g++ -O2 -Wall -fobjc-arc -D\"NS_FORMAT_ARGUMENT(A)=\" -D\"SKYLIGHT_AVAILABLE=1\" -o AutoRaise AutoRaise.mm -framework AppKit -F /System/Library/PrivateFrameworks -framework SkyLight\nelse\n    g++ -O2 -Wall -fobjc-arc -D\"NS_FORMAT_ARGUMENT(A)=\" -D\"SKYLIGHT_AVAILABLE=0\" -o AutoRaise AutoRaise.mm -framework AppKit\nfi\n";
+			shellScript = "cd \"${SRCROOT}\" && if [ -d /System/Library/PrivateFrameworks/SkyLight.framework ]; then\n    g++ -O2 -Wall -fobjc-arc -D\"NS_FORMAT_ARGUMENT(A)=\" -D\"SKYLIGHT_AVAILABLE=1\" -o AutoRaise AutoRaise.mm -framework AppKit -F /System/Library/PrivateFrameworks -framework SkyLight\nelse\n    g++ -O2 -Wall -fobjc-arc -D\"NS_FORMAT_ARGUMENT(A)=\" -D\"SKYLIGHT_AVAILABLE=0\" -o AutoRaise AutoRaise.mm -framework AppKit\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
