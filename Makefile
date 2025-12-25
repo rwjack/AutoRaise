@@ -35,8 +35,6 @@ gui-app: AutoRaise
 		-configuration Release \
 		-derivedDataPath build \
 		-clonedSourcePackagesDirPath build/SourcePackages \
-		ARCHS=arm64 \
-		ONLY_ACTIVE_ARCH=NO \
 		build 2>&1 | tee build/logs/build.log; \
 	BUILD_STATUS=$$?; \
 	if [ $$BUILD_STATUS -ne 0 ]; then \
