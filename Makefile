@@ -39,30 +39,27 @@ gui-app: AutoRaise
 		echo ""; \
 		echo "=== BUILD FAILED (exit code: $$BUILD_STATUS) ==="; \
 		echo ""; \
-		echo "Checking for compilation errors..."; \
-		if grep -q "error:" build/logs/build.log; then \
-			echo "Found compilation errors:"; \
-			grep -E "^[^:]*:[0-9]+:[0-9]+: error:" build/logs/build.log | head -20; \
+		if [ -f "build/logs/build.log" ]; then \
+			echo "Extracting errors from build log..."; \
 			echo ""; \
-			echo "Error details:"; \
-			grep -A 3 "error:" build/logs/build.log | head -40; \
+			echo "=== ALL ERRORS (case insensitive) ==="; \
+			grep -i "error" build/logs/build.log | head -100 || echo "No errors found"; \
+			echo ""; \
+			echo "=== BUILD FAILURE MESSAGES ==="; \
+			grep -iE "BUILD FAILED|failed|failure" build/logs/build.log | tail -50 || echo "No failure messages found"; \
+			echo ""; \
+			echo "=== LAST 100 LINES OF BUILD LOG ==="; \
+			tail -100 build/logs/build.log; \
+			echo ""; \
+			echo "=== CHECKING FOR XCODEBUILD ERROR REPORTS ==="; \
+			find build -name "*.xcresult" -o -name "*error*" -o -name "*fail*" 2>/dev/null | head -10; \
+		else \
+			echo "Build log file not found at build/logs/build.log"; \
+			echo "Checking for build log in other locations..."; \
+			find build -name "*.log" -type f 2>/dev/null | head -5; \
 		fi; \
 		echo ""; \
-		echo "Checking for build failures..."; \
-		if grep -qi "BUILD FAILED\|failed\|failure" build/logs/build.log; then \
-			echo "Build failure messages:"; \
-			grep -iE "BUILD FAILED|failed|failure" build/logs/build.log | tail -10; \
-		fi; \
-		echo ""; \
-		echo "Checking for warnings that might indicate issues..."; \
-		if grep -q "warning:" build/logs/build.log; then \
-			grep -E "warning:.*MASShortcut|warning:.*framework|warning:.*linking" build/logs/build.log | head -10; \
-		fi; \
-		echo ""; \
-		echo "Last 30 lines of build log:"; \
-		tail -30 build/logs/build.log; \
-		echo ""; \
-		echo "Full build log saved to: build/logs/build.log"; \
+		echo "Full build log location: build/logs/build.log"; \
 		exit $$BUILD_STATUS; \
 	fi
 	@echo "Verifying package was resolved..."

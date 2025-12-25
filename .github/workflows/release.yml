@@ -27,6 +27,14 @@ jobs:
       run: |
         make gui-app
     
+    - name: Upload build log on failure
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-log
+        path: build/logs/build.log
+        retention-days: 7
+    
     - name: Create DMG
       run: |
         chmod +x create-dmg.sh
