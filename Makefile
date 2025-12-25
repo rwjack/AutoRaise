@@ -28,12 +28,16 @@ AutoRaise.app: AutoRaise Info.plist AutoRaise.icns
 # Build GUI app with launcher (requires Xcode)
 gui-app: AutoRaise
 	@echo "Resolving Swift package dependencies..."
-	xcodebuild -resolvePackageDependencies -project AutoRaise.xcodeproj -scheme AutoRaise
+	xcodebuild -resolvePackageDependencies \
+		-project AutoRaise.xcodeproj \
+		-scheme AutoRaise \
+		-clonedSourcePackagesDirPath build/SourcePackages
 	@echo "Building AutoRaise.app with GUI launcher..."
 	xcodebuild -project AutoRaise.xcodeproj \
 		-scheme AutoRaise \
 		-configuration Release \
 		-derivedDataPath build \
+		-clonedSourcePackagesDirPath build/SourcePackages \
 		build
 	@cp -r build/Build/Products/Release/AutoRaise.app ./ || cp -r build/Build/Products/AutoRaise.app ./
 	@echo "Successfully created AutoRaise.app with GUI"
