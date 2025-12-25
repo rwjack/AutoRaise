@@ -75,10 +75,23 @@ gui-app: AutoRaise
 		fi; \
 		exit $$BUILD_STATUS; \
 	fi
-	@echo "Checking build log for linking step..."
+	@echo "Checking build log for linking and executable creation..."
 	@if [ -f build/logs/build.log ]; then \
-		echo "Linking step status:"; \
-		grep -i "Ld\|Linking\|error\|failed" build/logs/build.log | tail -10 || echo "No linking info found"; \
+		echo "=== LINKING STEP STATUS ==="; \
+		grep -i "Ld\|Linking\|CreateUniversalBinary\|CopySwiftLibs\|error\|failed" build/logs/build.log | tail -20 || echo "No linking info found"; \
+		echo ""; \
+		echo "=== CHECKING FOR EXECUTABLE CREATION ==="; \
+		grep -i "AutoRaise.app/Contents/MacOS\|executable\|product\|Touch\|CpResource" build/logs/build.log | tail -15 || echo "No executable creation info found"; \
+	fi
+	@echo "Checking if Swift executable was created in build products..."
+	@find build/Build/Products -name "AutoRaise" -type f 2>/dev/null | while read f; do \
+		echo "Found: $$f"; \
+		file "$$f" 2>/dev/null || true; \
+	done || echo "No AutoRaise executables found in build products"
+	@echo "Checking app bundle from Xcode build for executable..."
+	@if [ -d "build/Build/Products/Release/AutoRaise.app" ]; then \
+		echo "App bundle structure:"; \
+		find "build/Build/Products/Release/AutoRaise.app/Contents" -type f -o -type d | head -30; \
 	fi
 	@echo "Verifying package was resolved..."
 	@if [ -d "build/SourcePackages/checkouts/MASShortcut" ]; then \
@@ -166,7 +179,26 @@ gui-app: AutoRaise
 			ls -la "build/Build/Products/Release/AutoRaise.app/Contents/" 2>/dev/null || echo "App bundle not found"; \
 			if [ -d "build/Build/Products/Release/AutoRaise.app/Contents" ]; then \
 				echo "Contents directory structure:"; \
-				find "build/Build/Products/Release/AutoRaise.app/Contents" -type f -o -type d | head -20; \
+				find "build/Build/Products/Release/AutoRaise.app/Contents" -type f -o -type d | head -30; \
+			fi; \
+			echo ""; \
+			echo "=== CRITICAL: Swift executable should be created by xcodebuild ==="; \
+			echo "The Xcode project compiles AppDelegate.swift which should create the executable."; \
+			echo "If it's missing, there may be a linking error or configuration issue."; \
+			echo ""; \
+			echo "Checking build log for linking errors..."; \
+			if [ -f build/logs/build.log ]; then \
+				echo "=== LINKING ERRORS ==="; \
+				grep -i "Ld.*error\|Linking.*error\|undefined.*symbol\|duplicate.*symbol" build/logs/build.log | head -20 || echo "No obvious linking errors found"; \
+				echo ""; \
+				echo "=== SWIFT COMPILATION STATUS ==="; \
+				grep -i "CompileSwift\|swift.*error\|swift.*warning" build/logs/build.log | tail -20 || echo "No Swift compilation info found"; \
+				echo ""; \
+				echo "=== LOOKING FOR 'Ld' (LINKER) COMMAND ==="; \
+				grep -i "^[[:space:]]*Ld " build/logs/build.log | tail -5 || echo "No Ld command found"; \
+				echo ""; \
+				echo "=== CHECKING FOR EXECUTABLE CREATION IN BUILD LOG ==="; \
+				grep -i "AutoRaise.app/Contents/MacOS\|Touch.*AutoRaise\|CpResource.*AutoRaise" build/logs/build.log | tail -10 || echo "No executable creation found"; \
 			fi; \
 			exit 1; \
 		fi; \
