@@ -75,6 +75,11 @@ gui-app: AutoRaise
 		fi; \
 		exit $$BUILD_STATUS; \
 	fi
+	@echo "Checking build log for linking step..."
+	@if [ -f build/logs/build.log ]; then \
+		echo "Linking step status:"; \
+		grep -i "Ld\|Linking\|error\|failed" build/logs/build.log | tail -10 || echo "No linking info found"; \
+	fi
 	@echo "Verifying package was resolved..."
 	@if [ -d "build/SourcePackages/checkouts/MASShortcut" ]; then \
 		echo "✓ MASShortcut package found"; \
@@ -135,19 +140,34 @@ gui-app: AutoRaise
 			echo "✓ Copied Swift executable from Xcode build"; \
 			EXECUTABLE_FOUND=1; \
 		else \
-			SWIFT_EXEC=$(find build/Build/Products -name "AutoRaise" -type f -perm +111 2>/dev/null | head -1); \
+			echo "Searching for Swift executable in build products..."; \
+			SWIFT_EXEC=$(find build/Build/Products -type f -perm +111 2>/dev/null | grep -v "/Resources/AutoRaise$$" | grep "/AutoRaise$$" | head -1); \
 			if [ -n "$$SWIFT_EXEC" ]; then \
 				cp "$$SWIFT_EXEC" AutoRaise.app/Contents/MacOS/; \
 				echo "✓ Copied Swift executable from $$SWIFT_EXEC"; \
 				EXECUTABLE_FOUND=1; \
+			else \
+				echo "Checking build intermediates for Swift executable..."; \
+				SWIFT_EXEC=$(find build/Build/Intermediates.noindex -name "AutoRaise" -type f -perm +111 2>/dev/null | grep -v ".o$$" | grep -v ".dSYM" | head -1); \
+				if [ -n "$$SWIFT_EXEC" ]; then \
+					cp "$$SWIFT_EXEC" AutoRaise.app/Contents/MacOS/; \
+					echo "✓ Copied Swift executable from intermediates: $$SWIFT_EXEC"; \
+					EXECUTABLE_FOUND=1; \
+				fi; \
 			fi; \
 		fi; \
 		if [ "$$EXECUTABLE_FOUND" -eq 0 ]; then \
-			echo "ERROR: AutoRaise executable not found anywhere!"; \
+			echo "ERROR: AutoRaise Swift executable not found anywhere!"; \
 			echo "MacOS directory contents:"; \
 			ls -la AutoRaise.app/Contents/MacOS/ 2>/dev/null || echo "MacOS directory not accessible"; \
-			echo "Searching build products:"; \
-			find build/Build/Products -type f -perm +111 2>/dev/null | head -10 || echo "No executables found"; \
+			echo "All executables found in build products:"; \
+			find build/Build/Products -type f -perm +111 2>/dev/null || echo "No executables found"; \
+			echo "Checking app bundle structure from Xcode build:"; \
+			ls -la "build/Build/Products/Release/AutoRaise.app/Contents/" 2>/dev/null || echo "App bundle not found"; \
+			if [ -d "build/Build/Products/Release/AutoRaise.app/Contents" ]; then \
+				echo "Contents directory structure:"; \
+				find "build/Build/Products/Release/AutoRaise.app/Contents" -type f -o -type d | head -20; \
+			fi; \
 			exit 1; \
 		fi; \
 		chmod +x AutoRaise.app/Contents/MacOS/AutoRaise; \
