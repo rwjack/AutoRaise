@@ -40,19 +40,23 @@ gui-app: AutoRaise
 		echo "=== BUILD FAILED (exit code: $$BUILD_STATUS) ==="; \
 		echo ""; \
 		if [ -f "build/logs/build.log" ]; then \
-			echo "Extracting errors from build log..."; \
+			echo "Build log file size: $$(wc -l < build/logs/build.log) lines"; \
 			echo ""; \
-			echo "=== ALL ERRORS (case insensitive) ==="; \
-			grep -i "error" build/logs/build.log | head -100 || echo "No errors found"; \
+			echo "=== SEARCHING FOR ERROR PATTERNS ==="; \
+			echo "Errors with 'error:' pattern:"; \
+			grep -i "error:" build/logs/build.log | head -50 || echo "  None found"; \
 			echo ""; \
-			echo "=== BUILD FAILURE MESSAGES ==="; \
-			grep -iE "BUILD FAILED|failed|failure" build/logs/build.log | tail -50 || echo "No failure messages found"; \
+			echo "Lines containing 'failed':"; \
+			grep -i "failed" build/logs/build.log | head -30 || echo "  None found"; \
 			echo ""; \
-			echo "=== LAST 100 LINES OF BUILD LOG ==="; \
-			tail -100 build/logs/build.log; \
+			echo "Lines containing 'failure':"; \
+			grep -i "failure" build/logs/build.log | head -30 || echo "  None found"; \
 			echo ""; \
-			echo "=== CHECKING FOR XCODEBUILD ERROR REPORTS ==="; \
-			find build -name "*.xcresult" -o -name "*error*" -o -name "*fail*" 2>/dev/null | head -10; \
+			echo "=== BUILD SUMMARY SECTION ==="; \
+			grep -A 20 -B 5 "Building project\|BUILD\|failures" build/logs/build.log | tail -40 || echo "No build summary found"; \
+			echo ""; \
+			echo "=== LAST 150 LINES OF BUILD LOG ==="; \
+			tail -150 build/logs/build.log; \
 		else \
 			echo "Build log file not found at build/logs/build.log"; \
 			echo "Checking for build log in other locations..."; \
