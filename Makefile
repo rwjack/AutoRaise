@@ -49,7 +49,6 @@ gui-app: AutoRaise
 	fi
 	echo "✓ MASShortcut package resolved successfully"
 	echo "Building app..."
-	bash -c 'set -o pipefail; \
 	xcodebuild -project AutoRaise.xcodeproj \
 		-scheme AutoRaise \
 		-configuration Release \
@@ -60,27 +59,22 @@ gui-app: AutoRaise
 	if [ $$BUILD_STATUS -ne 0 ]; then \
 		echo ""; \
 		echo "=== BUILD FAILED WITH EXIT CODE: $$BUILD_STATUS ==="; \
-		if [ -f "build/logs/build.log" ]; then \
+		if [ -f build/logs/build.log ]; then \
 			echo ""; \
-			echo "=== SEARCHING FOR 'cannot find type' ERRORS ==="; \
+			echo "=== SEARCHING FOR cannot find type ERRORS ==="; \
 			grep -i "cannot find type\|not found in scope" build/logs/build.log | head -20 || echo "(no type errors found)"; \
 			echo ""; \
 			echo "=== SEARCHING FOR MASShortcut ERRORS ==="; \
-			grep -i "MASShortcut" build/logs/build.log | grep -i "error\|not found\|undefined" | head -20 || echo "(no MASShortcut errors found)"; \
+			grep -i MASShortcut build/logs/build.log | grep -i "error\|not found\|undefined" | head -20 || echo "(no MASShortcut errors found)"; \
 			echo ""; \
 			echo "=== SEARCHING FOR SWIFT ERRORS ==="; \
-			grep -i "error:" build/logs/build.log | head -30 || echo "(no 'error:' found)"; \
-			echo ""; \
-			echo "=== SEARCHING FOR COMPILATION ERRORS ==="; \
-			grep -i "compile.*error\|swift.*error\|failed.*compile" build/logs/build.log | head -20 || echo "(no compilation errors found)"; \
+			grep -i "error:" build/logs/build.log | head -30 || echo "(no error: found)"; \
 			echo ""; \
 			echo "=== LAST 300 LINES OF BUILD LOG ==="; \
 			tail -300 build/logs/build.log; \
-		else \
-			echo "ERROR: Build log file not found at build/logs/build.log"; \
 		fi; \
 		exit $$BUILD_STATUS; \
-	fi'
+	fi
 	@echo "Verifying package was resolved..."
 	@if [ -d "build/SourcePackages/checkouts/MASShortcut" ]; then \
 		echo "✓ MASShortcut package found"; \
