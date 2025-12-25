@@ -27,13 +27,39 @@ AutoRaise.app: AutoRaise Info.plist AutoRaise.icns
 
 # Build GUI app with launcher (requires Xcode)
 gui-app: AutoRaise
-	@echo "Building AutoRaise.app with GUI launcher (will auto-resolve packages)..."
-	@xcodebuild -project AutoRaise.xcodeproj \
+	echo "Building AutoRaise.app with GUI launcher (will auto-resolve packages)..."
+	mkdir -p build/logs
+	bash -c 'set -o pipefail; \
+	xcodebuild -project AutoRaise.xcodeproj \
 		-scheme AutoRaise \
 		-configuration Release \
 		-derivedDataPath build \
 		-clonedSourcePackagesDirPath build/SourcePackages \
-		build
+		ARCHS=arm64 \
+		ONLY_ACTIVE_ARCH=NO \
+		build 2>&1 | tee build/logs/build.log; \
+	BUILD_STATUS=$$?; \
+	if [ $$BUILD_STATUS -ne 0 ]; then \
+		echo ""; \
+		echo "=== BUILD FAILED WITH EXIT CODE: $$BUILD_STATUS ==="; \
+		if [ -f "build/logs/build.log" ]; then \
+			echo ""; \
+			echo "=== SEARCHING FOR SWIFT ERRORS ==="; \
+			grep -i "error:" build/logs/build.log | head -20 || echo "(no 'error:' found)"; \
+			echo ""; \
+			echo "=== SEARCHING FOR COMPILATION ERRORS ==="; \
+			grep -i "compile.*error\|swift.*error\|failed.*compile" build/logs/build.log | head -20 || echo "(no compilation errors found)"; \
+			echo ""; \
+			echo "=== SEARCHING FOR FAILED COMMANDS ==="; \
+			grep -i "failed\|failure" build/logs/build.log | head -20 || echo "(no failures found)"; \
+			echo ""; \
+			echo "=== LAST 200 LINES OF BUILD LOG ==="; \
+			tail -200 build/logs/build.log; \
+		else \
+			echo "ERROR: Build log file not found at build/logs/build.log"; \
+		fi; \
+		exit $$BUILD_STATUS; \
+	fi'
 	@echo "Verifying package was resolved..."
 	@if [ -d "build/SourcePackages/checkouts/MASShortcut" ]; then \
 		echo "✓ MASShortcut package found"; \
