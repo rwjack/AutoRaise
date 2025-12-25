@@ -29,6 +29,13 @@ AutoRaise.app: AutoRaise Info.plist AutoRaise.icns
 gui-app: AutoRaise
 	echo "Building AutoRaise.app with GUI launcher (will auto-resolve packages)..."
 	mkdir -p build/logs
+	echo "Resolving Swift Package Manager dependencies..."
+	xcodebuild -resolvePackageDependencies \
+		-project AutoRaise.xcodeproj \
+		-scheme AutoRaise \
+		-clonedSourcePackagesDirPath build/SourcePackages \
+		2>&1 | tee build/logs/package-resolution.log || echo "Package resolution completed (warnings may be present)"
+	echo "Building app..."
 	bash -c 'set -o pipefail; \
 	xcodebuild -project AutoRaise.xcodeproj \
 		-scheme AutoRaise \
