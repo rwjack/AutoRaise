@@ -107,11 +107,13 @@ gui-app: AutoRaise
 		find "$$APP_BUNDLE" -maxdepth 3 -type d 2>/dev/null | head -10; \
 	fi; \
 	if [ ! -f "$$APP_BUNDLE/Contents/MacOS/AutoRaise" ]; then \
-		echo "WARNING: AutoRaise executable missing in source bundle"; \
+		echo "WARNING: AutoRaise executable missing in source bundle MacOS directory"; \
 		echo "MacOS directory contents:"; \
 		ls -la "$$APP_BUNDLE/Contents/MacOS/" 2>/dev/null || echo "MacOS directory not found"; \
 		echo "Checking for any executables in app bundle:"; \
-		find "$$APP_BUNDLE" -type f -perm +111 2>/dev/null | head -5 || echo "No executables found"; \
+		find "$$APP_BUNDLE" -type f -perm +111 2>/dev/null | head -10 || echo "No executables found"; \
+		echo "Checking build products for Swift executable:"; \
+		find "build/Build/Products" -name "AutoRaise" -type f -perm +111 2>/dev/null | head -5 || echo "No AutoRaise executable found in build products"; \
 	fi; \
 	cp -r "$$APP_BUNDLE" ./ || (echo "ERROR: Failed to copy app bundle" && exit 1)
 	@echo "Verifying app bundle structure..."
@@ -122,10 +124,33 @@ gui-app: AutoRaise
 		exit 1; \
 	fi
 	@if [ ! -f "AutoRaise.app/Contents/MacOS/AutoRaise" ]; then \
-		echo "ERROR: AutoRaise executable missing from MacOS directory!"; \
-		echo "MacOS directory contents:"; \
-		ls -la AutoRaise.app/Contents/MacOS/ 2>/dev/null || echo "MacOS directory not accessible"; \
-		exit 1; \
+		echo "WARNING: AutoRaise executable missing from MacOS directory, searching for it..."; \
+		EXECUTABLE_FOUND=0; \
+		if [ -f "build/Build/Products/Release/AutoRaise.app/Contents/MacOS/AutoRaise" ]; then \
+			cp build/Build/Products/Release/AutoRaise.app/Contents/MacOS/AutoRaise AutoRaise.app/Contents/MacOS/; \
+			echo "✓ Copied Swift executable from Xcode build"; \
+			EXECUTABLE_FOUND=1; \
+		elif [ -f "build/Build/Products/AutoRaise.app/Contents/MacOS/AutoRaise" ]; then \
+			cp build/Build/Products/AutoRaise.app/Contents/MacOS/AutoRaise AutoRaise.app/Contents/MacOS/; \
+			echo "✓ Copied Swift executable from Xcode build"; \
+			EXECUTABLE_FOUND=1; \
+		else \
+			SWIFT_EXEC=$(find build/Build/Products -name "AutoRaise" -type f -perm +111 2>/dev/null | head -1); \
+			if [ -n "$$SWIFT_EXEC" ]; then \
+				cp "$$SWIFT_EXEC" AutoRaise.app/Contents/MacOS/; \
+				echo "✓ Copied Swift executable from $$SWIFT_EXEC"; \
+				EXECUTABLE_FOUND=1; \
+			fi; \
+		fi; \
+		if [ "$$EXECUTABLE_FOUND" -eq 0 ]; then \
+			echo "ERROR: AutoRaise executable not found anywhere!"; \
+			echo "MacOS directory contents:"; \
+			ls -la AutoRaise.app/Contents/MacOS/ 2>/dev/null || echo "MacOS directory not accessible"; \
+			echo "Searching build products:"; \
+			find build/Build/Products -type f -perm +111 2>/dev/null | head -10 || echo "No executables found"; \
+			exit 1; \
+		fi; \
+		chmod +x AutoRaise.app/Contents/MacOS/AutoRaise; \
 	fi
 	@echo "Ensuring AutoRaise binary is in app bundle Resources..."
 	@mkdir -p AutoRaise.app/Contents/Resources
