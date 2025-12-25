@@ -30,11 +30,24 @@ gui-app: AutoRaise
 	echo "Building AutoRaise.app with GUI launcher (will auto-resolve packages)..."
 	mkdir -p build/logs
 	echo "Resolving Swift Package Manager dependencies..."
-	xcodebuild -resolvePackageDependencies \
+	if ! xcodebuild -resolvePackageDependencies \
 		-project AutoRaise.xcodeproj \
 		-scheme AutoRaise \
 		-clonedSourcePackagesDirPath build/SourcePackages \
-		2>&1 | tee build/logs/package-resolution.log || echo "Package resolution completed (warnings may be present)"
+		2>&1 | tee build/logs/package-resolution.log; then \
+		echo "ERROR: Package resolution failed!"; \
+		echo "Package resolution log:"; \
+		cat build/logs/package-resolution.log; \
+		exit 1; \
+	fi
+	echo "Verifying MASShortcut package was resolved..."
+	if [ ! -d "build/SourcePackages/checkouts/MASShortcut" ]; then \
+		echo "ERROR: MASShortcut package not found after resolution!"; \
+		echo "SourcePackages directory contents:"; \
+		ls -la build/SourcePackages/checkouts/ 2>/dev/null || echo "SourcePackages/checkouts not found"; \
+		exit 1; \
+	fi
+	echo "✓ MASShortcut package resolved successfully"
 	echo "Building app..."
 	bash -c 'set -o pipefail; \
 	xcodebuild -project AutoRaise.xcodeproj \
@@ -49,17 +62,20 @@ gui-app: AutoRaise
 		echo "=== BUILD FAILED WITH EXIT CODE: $$BUILD_STATUS ==="; \
 		if [ -f "build/logs/build.log" ]; then \
 			echo ""; \
+			echo "=== SEARCHING FOR 'cannot find type' ERRORS ==="; \
+			grep -i "cannot find type\|not found in scope" build/logs/build.log | head -20 || echo "(no type errors found)"; \
+			echo ""; \
+			echo "=== SEARCHING FOR MASShortcut ERRORS ==="; \
+			grep -i "MASShortcut" build/logs/build.log | grep -i "error\|not found\|undefined" | head -20 || echo "(no MASShortcut errors found)"; \
+			echo ""; \
 			echo "=== SEARCHING FOR SWIFT ERRORS ==="; \
-			grep -i "error:" build/logs/build.log | head -20 || echo "(no 'error:' found)"; \
+			grep -i "error:" build/logs/build.log | head -30 || echo "(no 'error:' found)"; \
 			echo ""; \
 			echo "=== SEARCHING FOR COMPILATION ERRORS ==="; \
 			grep -i "compile.*error\|swift.*error\|failed.*compile" build/logs/build.log | head -20 || echo "(no compilation errors found)"; \
 			echo ""; \
-			echo "=== SEARCHING FOR FAILED COMMANDS ==="; \
-			grep -i "failed\|failure" build/logs/build.log | head -20 || echo "(no failures found)"; \
-			echo ""; \
-			echo "=== LAST 200 LINES OF BUILD LOG ==="; \
-			tail -200 build/logs/build.log; \
+			echo "=== LAST 300 LINES OF BUILD LOG ==="; \
+			tail -300 build/logs/build.log; \
 		else \
 			echo "ERROR: Build log file not found at build/logs/build.log"; \
 		fi; \
