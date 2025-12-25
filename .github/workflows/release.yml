@@ -23,6 +23,10 @@ jobs:
         make clean
         make AutoRaise
     
+    - name: Resolve Swift Packages
+      run: |
+        xcodebuild -resolvePackageDependencies -project AutoRaise.xcodeproj -scheme AutoRaise
+    
     - name: Build GUI app
       run: |
         make gui-app
