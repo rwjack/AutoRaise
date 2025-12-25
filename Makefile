@@ -29,26 +29,92 @@ AutoRaise.app: AutoRaise Info.plist AutoRaise.icns
 gui-app: AutoRaise
 	@echo "Building AutoRaise.app with GUI launcher (will auto-resolve packages)..."
 	@mkdir -p build/logs
-	@xcodebuild -project AutoRaise.xcodeproj \
+	@set -o pipefail; xcodebuild -project AutoRaise.xcodeproj \
 		-scheme AutoRaise \
 		-configuration Release \
 		-derivedDataPath build \
 		-clonedSourcePackagesDirPath build/SourcePackages \
-		build 2>&1 | tee build/logs/build.log || (echo "=== BUILD FAILED ===" && echo "Extracting Swift compilation errors:" && grep -E "(error:|warning:.*MASShortcut)" build/logs/build.log | head -20 && echo "" && echo "Full error context:" && grep -A 10 "error:" build/logs/build.log | head -50 && exit 1)
+		build 2>&1 | tee build/logs/build.log; BUILD_STATUS=$$?; \
+	if [ $$BUILD_STATUS -ne 0 ]; then \
+		echo ""; \
+		echo "=== BUILD FAILED (exit code: $$BUILD_STATUS) ==="; \
+		echo ""; \
+		echo "Checking for compilation errors..."; \
+		if grep -q "error:" build/logs/build.log; then \
+			echo "Found compilation errors:"; \
+			grep -E "^[^:]*:[0-9]+:[0-9]+: error:" build/logs/build.log | head -20; \
+			echo ""; \
+			echo "Error details:"; \
+			grep -A 3 "error:" build/logs/build.log | head -40; \
+		fi; \
+		echo ""; \
+		echo "Checking for build failures..."; \
+		if grep -qi "BUILD FAILED\|failed\|failure" build/logs/build.log; then \
+			echo "Build failure messages:"; \
+			grep -iE "BUILD FAILED|failed|failure" build/logs/build.log | tail -10; \
+		fi; \
+		echo ""; \
+		echo "Checking for warnings that might indicate issues..."; \
+		if grep -q "warning:" build/logs/build.log; then \
+			grep -E "warning:.*MASShortcut|warning:.*framework|warning:.*linking" build/logs/build.log | head -10; \
+		fi; \
+		echo ""; \
+		echo "Last 30 lines of build log:"; \
+		tail -30 build/logs/build.log; \
+		echo ""; \
+		echo "Full build log saved to: build/logs/build.log"; \
+		exit $$BUILD_STATUS; \
+	fi
 	@echo "Verifying package was resolved..."
 	@if [ -d "build/SourcePackages/checkouts/MASShortcut" ]; then \
 		echo "✓ MASShortcut package found"; \
 	else \
 		echo "⚠ MASShortcut package directory not found (may still work if built)"; \
 	fi
-	@cp -r build/Build/Products/Release/AutoRaise.app ./ || cp -r build/Build/Products/AutoRaise.app ./
+	@echo "Checking if app bundle was created..."
+	@if [ ! -d "build/Build/Products/Release/AutoRaise.app" ] && [ ! -d "build/Build/Products/AutoRaise.app" ]; then \
+		echo "ERROR: App bundle not found in build output!"; \
+		echo "Checking build directory structure..."; \
+		find build/Build/Products -name "*.app" -type d 2>/dev/null | head -5 || echo "No .app bundles found"; \
+		echo "Build products directory contents:"; \
+		ls -la build/Build/Products/ 2>/dev/null || echo "Products directory not found"; \
+		exit 1; \
+	fi
+	@APP_BUNDLE=""; \
+	if [ -d "build/Build/Products/Release/AutoRaise.app" ]; then \
+		APP_BUNDLE="build/Build/Products/Release/AutoRaise.app"; \
+	elif [ -d "build/Build/Products/AutoRaise.app" ]; then \
+		APP_BUNDLE="build/Build/Products/AutoRaise.app"; \
+	fi; \
+	if [ -z "$$APP_BUNDLE" ]; then \
+		echo "ERROR: Failed to locate app bundle"; \
+		exit 1; \
+	fi; \
+	echo "Found app bundle at: $$APP_BUNDLE"; \
+	echo "Checking app bundle contents..."; \
+	if [ ! -d "$$APP_BUNDLE/Contents/MacOS" ]; then \
+		echo "WARNING: MacOS directory missing in source bundle"; \
+		find "$$APP_BUNDLE" -maxdepth 3 -type d 2>/dev/null | head -10; \
+	fi; \
+	if [ ! -f "$$APP_BUNDLE/Contents/MacOS/AutoRaise" ]; then \
+		echo "WARNING: AutoRaise executable missing in source bundle"; \
+		echo "MacOS directory contents:"; \
+		ls -la "$$APP_BUNDLE/Contents/MacOS/" 2>/dev/null || echo "MacOS directory not found"; \
+		echo "Checking for any executables in app bundle:"; \
+		find "$$APP_BUNDLE" -type f -perm +111 2>/dev/null | head -5 || echo "No executables found"; \
+	fi; \
+	cp -r "$$APP_BUNDLE" ./ || (echo "ERROR: Failed to copy app bundle" && exit 1)
 	@echo "Verifying app bundle structure..."
 	@if [ ! -d "AutoRaise.app/Contents/MacOS" ]; then \
 		echo "ERROR: MacOS directory missing!"; \
+		echo "App bundle contents:"; \
+		find AutoRaise.app -maxdepth 3 -type d 2>/dev/null || true; \
 		exit 1; \
 	fi
 	@if [ ! -f "AutoRaise.app/Contents/MacOS/AutoRaise" ]; then \
 		echo "ERROR: AutoRaise executable missing from MacOS directory!"; \
+		echo "MacOS directory contents:"; \
+		ls -la AutoRaise.app/Contents/MacOS/ 2>/dev/null || echo "MacOS directory not accessible"; \
 		exit 1; \
 	fi
 	@echo "Ensuring AutoRaise binary is in app bundle Resources..."
