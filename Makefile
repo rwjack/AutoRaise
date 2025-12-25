@@ -42,6 +42,68 @@ gui-app: AutoRaise
 		echo "⚠ MASShortcut package directory not found (may still work if built)"; \
 	fi
 	@cp -r build/Build/Products/Release/AutoRaise.app ./ || cp -r build/Build/Products/AutoRaise.app ./
+	@echo "Verifying app bundle structure..."
+	@if [ ! -d "AutoRaise.app/Contents/MacOS" ]; then \
+		echo "ERROR: MacOS directory missing!"; \
+		exit 1; \
+	fi
+	@if [ ! -f "AutoRaise.app/Contents/MacOS/AutoRaise" ]; then \
+		echo "ERROR: AutoRaise executable missing from MacOS directory!"; \
+		exit 1; \
+	fi
+	@echo "Ensuring AutoRaise binary is in app bundle Resources..."
+	@mkdir -p AutoRaise.app/Contents/Resources
+	@if [ ! -f "AutoRaise.app/Contents/Resources/AutoRaise" ]; then \
+		if [ -f "build/Build/Products/Release/AutoRaise.app/Contents/Resources/AutoRaise" ]; then \
+			cp build/Build/Products/Release/AutoRaise.app/Contents/Resources/AutoRaise AutoRaise.app/Contents/Resources/; \
+			echo "✓ Copied AutoRaise binary from Xcode build"; \
+		elif [ -f "AutoRaise" ]; then \
+			cp AutoRaise AutoRaise.app/Contents/Resources/; \
+			echo "✓ Copied AutoRaise binary from project root"; \
+		else \
+			echo "ERROR: AutoRaise binary not found anywhere!"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "✓ AutoRaise binary already in Resources"; \
+	fi
+	@chmod +x AutoRaise.app/Contents/Resources/AutoRaise
+	@echo "Verifying MASShortcut framework is embedded..."
+	@if [ ! -d "AutoRaise.app/Contents/Frameworks/MASShortcut.framework" ]; then \
+		echo "MASShortcut framework not found, searching for it..."; \
+		FRAMEWORK_FOUND=0; \
+		if [ -d "build/Build/Products/Release/AutoRaise.app/Contents/Frameworks/MASShortcut.framework" ]; then \
+			mkdir -p AutoRaise.app/Contents/Frameworks; \
+			cp -r build/Build/Products/Release/AutoRaise.app/Contents/Frameworks/MASShortcut.framework AutoRaise.app/Contents/Frameworks/; \
+			echo "✓ Copied MASShortcut framework from Xcode build app bundle"; \
+			FRAMEWORK_FOUND=1; \
+		elif [ -d "build/Build/Products/Release/MASShortcut.framework" ]; then \
+			mkdir -p AutoRaise.app/Contents/Frameworks; \
+			cp -r build/Build/Products/Release/MASShortcut.framework AutoRaise.app/Contents/Frameworks/; \
+			echo "✓ Copied MASShortcut framework from build products"; \
+			FRAMEWORK_FOUND=1; \
+		elif [ -d "build/SourcePackages/checkouts/MASShortcut/Framework" ]; then \
+			mkdir -p AutoRaise.app/Contents/Frameworks; \
+			cp -r build/SourcePackages/checkouts/MASShortcut/Framework AutoRaise.app/Contents/Frameworks/MASShortcut.framework; \
+			echo "✓ Copied MASShortcut framework from source packages"; \
+			FRAMEWORK_FOUND=1; \
+		fi; \
+		if [ "$$FRAMEWORK_FOUND" -eq 0 ]; then \
+			echo "⚠ Warning: MASShortcut framework not found - app may not work correctly"; \
+			echo "Searched in:"; \
+			echo "  - build/Build/Products/Release/AutoRaise.app/Contents/Frameworks/"; \
+			echo "  - build/Build/Products/Release/"; \
+			echo "  - build/SourcePackages/checkouts/MASShortcut/Framework"; \
+		fi; \
+	else \
+		echo "✓ MASShortcut framework found"; \
+	fi
+	@echo "Ad-hoc signing app for Gatekeeper compatibility..."
+	@codesign --force --deep --sign - AutoRaise.app || (echo "ERROR: Code signing failed" && exit 1)
+	@echo "Verifying code signature..."
+	@codesign --verify --verbose AutoRaise.app || (echo "ERROR: Code signature verification failed" && exit 1)
+	@echo "App bundle structure:"
+	@find AutoRaise.app -type f -o -type d | head -20
 	@echo "Successfully created AutoRaise.app with GUI"
 
 # Create DMG from GUI app
