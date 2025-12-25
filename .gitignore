@@ -1,4 +1,15 @@
+# Build artifacts
 AutoRaise
-AutoRaise.out
 AutoRaise.app
-*~
+AutoRaise.dmg
+build/
+*.o
+*.dSYM
+
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+.DS_Store
+
+# Temporary files
+*.tmp.dmg

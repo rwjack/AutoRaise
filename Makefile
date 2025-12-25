@@ -1,13 +1,15 @@
 SKYLIGHT_AVAILABLE := $(shell test -d /System/Library/PrivateFrameworks/SkyLight.framework && echo 1 || echo 0)
 override CXXFLAGS += -O2 -Wall -fobjc-arc -D"NS_FORMAT_ARGUMENT(A)=" -D"SKYLIGHT_AVAILABLE=$(SKYLIGHT_AVAILABLE)"
 
-.PHONY: all clean install build run debug update
+.PHONY: all clean install build run debug update dmg gui-app
 
 all: AutoRaise AutoRaise.app
 
 clean:
 	rm -f AutoRaise
 	rm -rf AutoRaise.app
+	rm -rf build/
+	rm -f AutoRaise.dmg
 
 install: AutoRaise.app
 	rm -rf /Applications/AutoRaise.app
@@ -22,6 +24,21 @@ AutoRaise: AutoRaise.mm
 
 AutoRaise.app: AutoRaise Info.plist AutoRaise.icns
 	./create-app-bundle.sh
+
+# Build GUI app with launcher (requires Xcode)
+gui-app: AutoRaise
+	@echo "Building AutoRaise.app with GUI launcher..."
+	xcodebuild -project AutoRaise.xcodeproj \
+		-scheme AutoRaise \
+		-configuration Release \
+		-derivedDataPath build \
+		clean build
+	@cp -r build/Build/Products/Release/AutoRaise.app ./ || cp -r build/Build/Products/AutoRaise.app ./
+	@echo "Successfully created AutoRaise.app with GUI"
+
+# Create DMG from GUI app
+dmg: gui-app
+	./create-dmg.sh
 
 build: clean
 	make CXXFLAGS="-DOLD_ACTIVATION_METHOD -DEXPERIMENTAL_FOCUS_FIRST"

@@ -24,8 +24,16 @@ icon. The item should re-appear so that you can properly enable Accessibility.
 To compile AutoRaise yourself, download the master branch from [here](https://github.com/sbmpost/AutoRaise/archive/refs/heads/master.zip)
 and use the following commands:
 
+**Command-line version only:**
     unzip -d ~ ~/Downloads/AutoRaise-master.zip
     cd ~/AutoRaise-master && make clean && make && make install
+
+**GUI version with menu bar launcher (recommended):**
+    unzip -d ~ ~/Downloads/AutoRaise-master.zip
+    cd ~/AutoRaise-master
+    make clean && make AutoRaise    # Build the core binary
+    make gui-app                    # Build the GUI launcher app
+    make dmg                        # Create DMG for distribution (optional)
 
 **Advanced compilation options**
 
@@ -47,10 +55,10 @@ Example advanced compilation command:
 
 **Running AutoRaise**
 
-After making the project, you end up with these two files:
+After making the project, you end up with these files:
 
     AutoRaise (command line version)
-    AutoRaise.app (version without GUI)
+    AutoRaise.app (basic version without GUI, or GUI version with launcher if built with 'make gui-app')
 
 The first binary is to be used directly from the command line and accepts parameters. The second binary, AutoRaise.app, can
 be used without a terminal window and relies on the presence of a configuration file. AutoRaise.app runs on the background and
@@ -113,6 +121,14 @@ AutoRaise can read these parameters from a configuration file. To make this happ
 
 **AutoRaise.app usage:**
 
+**GUI Launcher version (recommended):**
+    a) open /Applications/AutoRaise.app (allow Accessibility if asked for)
+    b) Left-click the menu bar icon to start/stop AutoRaise
+    c) Right-click the menu bar icon to open Preferences
+    d) Configure delay, warp settings, and other options in the Preferences window
+    e) Option to hide the menu bar icon permanently (preferences accessible via Finder/Spotlight)
+
+**Basic version (without GUI):**
     a) setup configuration file, see above ^
     b) open /Applications/AutoRaise.app (allow Accessibility if asked for)
     c) either stop AutoRaise via "Activity Monitor" or read on:
