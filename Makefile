@@ -29,41 +29,44 @@ AutoRaise.app: AutoRaise Info.plist AutoRaise.icns
 gui-app: AutoRaise
 	@echo "Building AutoRaise.app with GUI launcher (will auto-resolve packages)..."
 	@mkdir -p build/logs
-	@set -o pipefail; xcodebuild -project AutoRaise.xcodeproj \
+	@set -o pipefail; \
+	xcodebuild -project AutoRaise.xcodeproj \
 		-scheme AutoRaise \
 		-configuration Release \
 		-derivedDataPath build \
 		-clonedSourcePackagesDirPath build/SourcePackages \
-		build 2>&1 | tee build/logs/build.log; BUILD_STATUS=$$?; \
+		build 2>&1 | tee build/logs/build.log; \
+	BUILD_STATUS=$$?; \
+	echo ""; \
+	echo "=== BUILD COMPLETED WITH EXIT CODE: $$BUILD_STATUS ==="; \
 	if [ $$BUILD_STATUS -ne 0 ]; then \
 		echo ""; \
-		echo "=== BUILD FAILED (exit code: $$BUILD_STATUS) ==="; \
-		echo ""; \
+		echo "=== BUILD FAILED - EXTRACTING ERRORS ==="; \
 		if [ -f "build/logs/build.log" ]; then \
-			echo "Build log file size: $$(wc -l < build/logs/build.log) lines"; \
+			LOG_LINES=$$(wc -l < build/logs/build.log 2>/dev/null || echo "0"); \
+			echo "Build log file exists with $$LOG_LINES lines"; \
 			echo ""; \
-			echo "=== SEARCHING FOR ERROR PATTERNS ==="; \
-			echo "Errors with 'error:' pattern:"; \
-			grep -i "error:" build/logs/build.log | head -50 || echo "  None found"; \
+			echo "=== ERRORS WITH 'error:' PATTERN ==="; \
+			grep -i "error:" build/logs/build.log | head -50 || echo "  (none found)"; \
 			echo ""; \
-			echo "Lines containing 'failed':"; \
-			grep -i "failed" build/logs/build.log | head -30 || echo "  None found"; \
+			echo "=== LINES CONTAINING 'failed' ==="; \
+			grep -i "failed" build/logs/build.log | head -30 || echo "  (none found)"; \
 			echo ""; \
-			echo "Lines containing 'failure':"; \
-			grep -i "failure" build/logs/build.log | head -30 || echo "  None found"; \
+			echo "=== LINES CONTAINING 'failure' ==="; \
+			grep -i "failure" build/logs/build.log | head -30 || echo "  (none found)"; \
 			echo ""; \
-			echo "=== BUILD SUMMARY SECTION ==="; \
-			grep -A 20 -B 5 "Building project\|BUILD\|failures" build/logs/build.log | tail -40 || echo "No build summary found"; \
+			echo "=== BUILD SUMMARY (around failures) ==="; \
+			grep -A 10 -B 10 "failures\|BUILD\|Building project" build/logs/build.log | tail -50 || echo "  (no summary found)"; \
 			echo ""; \
-			echo "=== LAST 150 LINES OF BUILD LOG ==="; \
-			tail -150 build/logs/build.log; \
+			echo "=== LAST 200 LINES OF BUILD LOG ==="; \
+			tail -200 build/logs/build.log; \
 		else \
-			echo "Build log file not found at build/logs/build.log"; \
-			echo "Checking for build log in other locations..."; \
-			find build -name "*.log" -type f 2>/dev/null | head -5; \
+			echo "ERROR: Build log file not found at build/logs/build.log"; \
+			echo "Searching for log files..."; \
+			find build -name "*.log" -type f 2>/dev/null | head -10 || echo "  (no log files found)"; \
 		fi; \
 		echo ""; \
-		echo "Full build log location: build/logs/build.log"; \
+		echo "Full build log should be at: build/logs/build.log"; \
 		exit $$BUILD_STATUS; \
 	fi
 	@echo "Verifying package was resolved..."

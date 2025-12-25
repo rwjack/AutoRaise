@@ -18,6 +18,12 @@ jobs:
       with:
         xcode-version: latest-stable
     
+    - name: Verify environment
+      run: |
+        echo "macOS version: $(sw_vers -productVersion)"
+        echo "Xcode version: $(xcodebuild -version)"
+        echo "Xcode path: $(xcode-select -p)"
+    
     - name: Build AutoRaise binary
       run: |
         make clean
